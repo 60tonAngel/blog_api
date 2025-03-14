@@ -28,9 +28,9 @@ jobs:
       - name: Build
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o blog_api_linux
-          mkdir -p release
+          mkdir -p release/config
           cp blog_api_linux release/
-          cp config/config.yaml release/
+          cp -r config/* release/config/
           tar -czf blog_api.tar.gz release/
 
       - name: Delete existing release
@@ -74,26 +74,30 @@ jobs:
             mkdir -p /opt/blog_api/config
             cd /opt/blog_api
             
-            # 下载并解压
+            # 下载并检查文件
             echo "下载发布包..."
-            for i in {1..5}; do wget -q https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz && break || sleep 15; done
+            wget -q https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/blog_api.tar.gz
             
-            if [ ! -f blog_api.tar.gz ]; then
-              echo "下载发布包失败，退出..."
-              exit 1
-            fi
+            # 列出当前目录内容（调试用）
+            echo "当前目录内容："
+            ls -la
             
             echo "解压文件..."
             tar xzf blog_api.tar.gz
             
+            echo "解压后的目录内容："
+            ls -la release/
+            ls -la release/config/
+            
             # 移动文件到正确位置
             echo "移动文件..."
-            mv release/blog_api_linux ./
-            mv release/config/config.yaml ./config/
+            mv -f release/blog_api_linux ./
+            cp -rf release/config/* ./config/
             
             # 设置权限
             echo "设置权限..."
             chmod +x blog_api_linux
+            chmod -R 644 config/*
             
             # 清理临时文件
             echo "清理文件..."
@@ -102,9 +106,5 @@ jobs:
             # 重启服务
             echo "重启服务..."
             sudo systemctl restart blog-api || true
-            
-            # 验证服务状态
-            echo "检查服务状态..."
-            systemctl status blog-api --no-pager || true
             
             echo "部署完成"
