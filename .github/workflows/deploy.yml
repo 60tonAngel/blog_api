@@ -76,7 +76,12 @@ jobs:
             
             # 下载并解压
             echo "下载发布包..."
-            wget -q https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz
+            for i in {1..5}; do wget -q https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz && break || sleep 15; done
+            
+            if [ ! -f blog_api.tar.gz ]; then
+              echo "下载发布包失败，退出..."
+              exit 1
+            fi
             
             echo "解压文件..."
             tar xzf blog_api.tar.gz
