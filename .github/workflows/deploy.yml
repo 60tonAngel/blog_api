@@ -69,8 +69,24 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
+            # 创建部署目录（如果不存在）
+            mkdir -p /opt/blog_api
             cd /opt/blog_api
-            wget -q --show-progress https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz
-            tar xzf blog_api.tar.gz --overwrite
+            
+            # 下载最新版本
+            echo "下载发布包..."
+            wget -q https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz
+            
+            # 解压并设置权限
+            echo "解压文件..."
+            tar xzf blog_api.tar.gz
             chmod +x blog_api_linux
-            sudo systemctl restart blog-api
+            
+            # 清理并重启服务
+            echo "清理临时文件..."
+            rm -f blog_api.tar.gz
+            
+            echo "重启服务..."
+            sudo systemctl restart blog-api || true
+            
+            echo "部署完成"
