@@ -6,7 +6,12 @@ on:
       - 'v*'
   workflow_dispatch:
 
-permissions: write-all
+permissions:
+  contents: write
+  releases: write
+  deployments: write
+  checks: read
+  pull-requests: read
 
 jobs:
   build:
@@ -30,13 +35,18 @@ jobs:
           tar -czf blog_api.tar.gz release/
 
       - name: Delete existing release
-        run: |
-          gh release delete ${GITHUB_REF#refs/tags/} --yes || true
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.repos.deleteReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: "${{ github.ref_name }}"
+            });
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: blog_api.tar.gz
@@ -44,7 +54,6 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to Server
         uses: appleboy/ssh-action@master
@@ -53,9 +62,9 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd /opt/blog_api
-            wget https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz
-            tar xzf blog_api.tar.gz
-            mv release/* ./
-            rm -rf release blog_api.tar.gz
-            systemctl restart blog-api
+            wget -q --show-progress https://github.com/${{ github.repository }}/releases/latest/download/blog_api.tar.gz
+            tar xzf blog_api.tar.gz --overwrite
+            chmod +x blog_api_linux
+            sudo systemctl restart blog-api
