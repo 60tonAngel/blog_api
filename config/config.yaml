@@ -1,0 +1,13 @@
+server:
+  port: #端口号
+  mode: release  # debug/release
+
+database:
+  host: #数据库地址
+  port: #数据库端口
+  username: #数据库用户名
+  password: #数据库密码
+  dbname: #数据库名
+  charset: utf8mb4
+  parseTime: true
+  loc: Local
