@@ -3,13 +3,18 @@ name: Deploy Blog API
 on:
   push:
     tags:
-      - 'v*' # 当推送版本标签时触发
+      - 'v*'
+  workflow_dispatch:
+
+permissions: write-all
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -24,26 +29,22 @@ jobs:
           cp config/config.yaml release/
           tar -czf blog_api.tar.gz release/
 
+      - name: Delete existing release
+        run: |
+          gh release delete ${GITHUB_REF#refs/tags/} --yes || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          files: blog_api.tar.gz
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./blog_api.tar.gz
-          asset_name: blog_api.tar.gz
-          asset_content_type: application/gzip
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to Server
         uses: appleboy/ssh-action@master
